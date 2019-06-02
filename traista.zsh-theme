@@ -1,7 +1,7 @@
 # traistă theme v0.0.1
 # https://github.com/gni/traista
 
-local ret_status="%(?:%{$fg[green]%}⦿:%{$fg_bold[red]%}💀)"
+local ret_status="%(?:%{$fg[green]%}🐢:%{$fg_bold[red]%}💀)"
 PROMPT='${ret_status}%{$fg_bold[blue]%}%p %{$fg_bold[blue]%}%c %{$reset_color%}$(git_prompt_info)'
 RPROMPT='$(nvm_prompt_info)'
 ZSH_THEME_NVM_PROMPT_PREFIX="%{$fg_bold[green]%}%B⬢%b%{$reset_color%} "
