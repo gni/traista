@@ -32,7 +32,7 @@ Reload your terminal.
 
 ## Screen
 
-![](sreen.png)
+![](screen.png)
 
 
 ## Requirements
