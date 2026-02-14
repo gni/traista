@@ -74,7 +74,7 @@ function _traista_git_info() {
 
   # Build output — pre-formatted with prompt escape sequences
   local result=""
-  result+=" %{\033[0;36m%}\uE0A0 ${branch:gs/%/%%}%{\033[0m%}"
+  result+=" %{\033[0;36m%}⌥ ${branch:gs/%/%%}%{\033[0m%}"
   (( staged ))    && result+=" %{\033[0;32m%}+${staged}%{\033[0m%}"
   (( modified ))  && result+=" %{\033[0;33m%}~${modified}%{\033[0m%}"
   (( untracked )) && result+=" %{\033[0;34m%}?${untracked}%{\033[0m%}"
