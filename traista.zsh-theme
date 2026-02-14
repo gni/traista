@@ -1,54 +1,124 @@
-# traistă theme v0.0.2
+# traistă theme v2.0.0
 # https://github.com/gni/traista
+#
+# Fast, async two-line prompt with Nerd Font icons.
+# Requires: oh-my-zsh, a Nerd Font patched terminal font.
 
-# The prompt
+# ---------------------------------------------------------------------------
+#  Async git handler — runs in a forked subshell via oh-my-zsh async system
+# ---------------------------------------------------------------------------
+function _traista_git_info() {
+  emulate -L zsh
 
-local ret_status="%(?:%{$fg[green]%}🚥:💀)"
-PROMPT='${ret_status}%{$fg_bold[blue]%}%p %{$fg_bold[blue]%}%c '
+  local raw
+  raw="$(GIT_OPTIONAL_LOCKS=0 command git status --porcelain=v1 -b 2>/dev/null)" || return 0
 
-# The right-hand prompt
+  local -i staged=0 modified=0 untracked=0 deleted=0 unmerged=0
+  local -i ahead=0 behind=0
+  local branch=""
 
-RPROMPT='${time}%{$fg_bold[green]%}$(git_prompt_info)%{$reset_color%}$(git_prompt_status)%{$reset_color%}$(git_prompt_ahead)%{$reset_color%}'
+  # Split into lines
+  local -a lines=("${(@f)raw}")
 
-# local time, color coded by last return code
-time_enabled="%(?.%{$fg[blue]%}.%{$fg[red]%})%*%{$reset_color%}"
-time_disabled="%{$fg[green]%}%*%{$reset_color%}"
-time=$time_enabled
+  # Parse header: ## branch...origin/branch [ahead N, behind M]
+  local header="${lines[1]}"
+  if [[ "$header" =~ '## (.+)\.\.\.(.+)' ]]; then
+    branch="${match[1]}"
+  elif [[ "$header" =~ '## (.+)' ]]; then
+    branch="${match[1]}"
+  fi
 
-ZSH_THEME_GIT_PROMPT_PREFIX=" 🌿 %{$fg[white]%}"
-ZSH_THEME_GIT_PROMPT_SUFFIX="%{$reset_color%}"
-ZSH_THEME_GIT_PROMPT_DIRTY="%{$fg[yellow]%} ☔" # Ⓓ
-ZSH_THEME_GIT_PROMPT_UNTRACKED="%{$fg[cyan]%} 🌙" # ⓣ
-ZSH_THEME_GIT_PROMPT_CLEAN="%{$fg[green]%} 🌞" # Ⓞ
+  # Handle "No commits yet on main"
+  if [[ "$branch" =~ '^No commits yet on (.+)$' ]]; then
+    branch="${match[1]}"
+  fi
 
-ZSH_THEME_GIT_PROMPT_ADDED="%{$fg[cyan]%} ✨" # ⓐ ⑃
-ZSH_THEME_GIT_PROMPT_MODIFIED="%{$fg[yellow]%} ⚡"  # ⓜ ⑁
-ZSH_THEME_GIT_PROMPT_DELETED="%{$fg[red]%} 💥" # ⓧ ⑂
-ZSH_THEME_GIT_PROMPT_RENAMED="%{$fg[blue]%} 🐾" # ⓡ ⑄
-ZSH_THEME_GIT_PROMPT_UNMERGED="%{$fg[magenta]%} ♒" # ⓤ ⑊
-ZSH_THEME_GIT_PROMPT_AHEAD="%{$fg[blue]%} 🌬"
+  # Handle detached HEAD
+  if [[ "$branch" == *"(no branch)"* ]] || [[ "$branch" == "HEAD" ]]; then
+    branch="$(GIT_OPTIONAL_LOCKS=0 command git describe --tags --exact-match HEAD 2>/dev/null \
+              || GIT_OPTIONAL_LOCKS=0 command git rev-parse --short HEAD 2>/dev/null \
+              || echo 'detached')"
+  fi
 
-ZSH_THEME_RUBY_PROMPT_PREFIX="%{$fg[yellow]%}"
-ZSH_THEME_RUBY_PROMPT_SUFFIX="%{$reset_color%}"
+  # Parse ahead/behind
+  [[ "$header" =~ '\[ahead ([0-9]+)' ]] && ahead=${match[1]}
+  [[ "$header" =~ 'behind ([0-9]+)' ]] && behind=${match[1]}
 
-# Symbols:
-# ☀ ✹ ☄ ♆ ♀ ♁ ♐ ♇ ♈ ♉ ♚ ♛ ♜ ♝ ♞ ♟ ♠ ♣ ⚢ ⚲ ⚳ ⚴ ⚥ ⚤ ⚦ ⚒ ⚑ ⚐ ♺ ♻ ♼ ☰ ☱ ☲ ☳ ☴ ☵ ☶ ☷
-# ✡ ✔ ✖ ✚ ✱ ✤ ✦ ❤ ➜ ➟ ➼ ✂ ✎ ✐ ⨀ ⨁ ⨂ ⨍ ⨎ ⨏ ⨷ ⩚ ⩛ ⩡ ⩱ ⩲ ⩵  ⩶ ⨠ 
-# ⬅ ⬆ ⬇ ⬈ ⬉ ⬊ ⬋ ⬒ ⬓ ⬔ ⬕ ⬖ ⬗ ⬘ ⬙ ⬟  ⬤ 〒 ǀ ǁ ǂ ĭ Ť Ŧ
+  # Parse file status lines (skip header)
+  local line x y
+  for line in "${lines[@]:1}"; do
+    [[ -z "$line" ]] && continue
+    x="$line[1]"
+    y="$line[2]"
 
-# Emojis
-# 🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐻‍❄️ 🐨 🐯 🦁 🐮 🐷 🐽 🐸 🐵 🙈 🙉 🙊 🐒 🐔 🐧 🐦 🐤 🐣 🐥 
+    # Untracked / ignored
+    if [[ "$x" == "?" ]]; then
+      (( untracked++ ))
+      continue
+    fi
+    [[ "$x" == "!" ]] && continue
 
-# 🦆 🦅 🦉 🦇 🐺 🐗 🐴 🦄 🐝 🪱 🐛 🦋 🐌 🐞 🐜 🪰 🪲 🪳 🦟 🦗 🕷 🕸 🦂 🐢 🐍 🦎 🦖 🦕 
+    # Unmerged
+    if [[ "$x$y" == (UU|AA|DD|AU|UA|DU|UD) ]]; then
+      (( unmerged++ ))
+      continue
+    fi
 
-# 🐙 🦑 🦐 🦞 🦀 🪸 🐡 🐠 🐟 🐬 🐳 🐋 🦈 🐊 🐅 🐆 🦓 🦍 🦧 🦣 🐘 🦛 🦏 🐪 🐫 🦒 🦘 
+    # Index (staged) changes
+    [[ "$x" == [AMRCD] ]] && (( staged++ ))
 
-# 🦬 🐃 🐂 🐄 🐎 🐖 🐏 🐑 🦙 🐐 🦌 🐕 🐩 🦮 🐕‍🦺 🐈 🐈‍⬛ 🪶 🐓 🦃 🦤 🦚 🦜 🦢 🦩 🕊 
+    # Worktree changes
+    [[ "$y" == "M" ]] && (( modified++ ))
+    [[ "$y" == "D" ]] && (( deleted++ ))
+  done
 
-# 🐇 🦝 🦨 🦡 🦫 🦦 🦥 🐁 🐀 🐿 🦔 🐾 🐉 🐲 🌵 🎄 🌲 🌳 🌴 🪹 🪺 🪵 🌱 🌿 ☘️ 🍀 🎍 🪴 
+  # Build output — pre-formatted with prompt escape sequences
+  local result=""
+  result+=" %{\033[0;36m%}\uE0A0 ${branch:gs/%/%%}%{\033[0m%}"
+  (( staged ))    && result+=" %{\033[0;32m%}+${staged}%{\033[0m%}"
+  (( modified ))  && result+=" %{\033[0;33m%}~${modified}%{\033[0m%}"
+  (( untracked )) && result+=" %{\033[0;34m%}?${untracked}%{\033[0m%}"
+  (( deleted ))   && result+=" %{\033[0;31m%}-${deleted}%{\033[0m%}"
+  (( unmerged ))  && result+=" %{\033[0;35m%}!${unmerged}%{\033[0m%}"
+  (( ahead ))     && result+=" %{\033[0;32m%}↑${ahead}%{\033[0m%}"
+  (( behind ))    && result+=" %{\033[0;31m%}↓${behind}%{\033[0m%}"
 
-# 🎋 🍃 🍂 🍁 🍄 🐚 🪨 🌾 💐 🌷 🪷 🌹 🥀 🌺 🌸 🌼 🌻 🌞 🌝 🌛 🌜 🌚 🌕 🌖 🌗 🌘 🌑 
+  echo -n "$result"
+}
 
-# 🌒 🌓 🌔 🌙 🌎 🌍 🌏 🪐 💫 ⭐️ 🌟 ✨ ⚡️ ☄️ 💥 🔥 🌪 🌈 ☀️ 🌤 ⛅️ 🌥 ☁️ 🌦 🌧 ⛈ 🌩 🌨 ❄️ ☃️ ⛄️ 
+# ---------------------------------------------------------------------------
+#  Prompt stub — reads cached async output
+# ---------------------------------------------------------------------------
+function _traista_git_prompt() {
+  echo -n "${_OMZ_ASYNC_OUTPUT[_traista_git_info]}"
+}
 
-# 🌬 💨 💧 💦 🫧 ☔️ ☂️ 🌊
+# ---------------------------------------------------------------------------
+#  Right-aligned time on line 1 — uses cursor positioning (no length math)
+# ---------------------------------------------------------------------------
+function _traista_right_time() {
+  local time_len=${#${(%):-%*}}
+  local col=$(( COLUMNS - time_len + 1 ))
+  echo -n "%{\e[${col}G%}%(?.%{\033[0;34m%}.%{\033[0;31m%})%*%{\033[0m%}"
+}
+
+# ---------------------------------------------------------------------------
+#  Register async handler with oh-my-zsh
+# ---------------------------------------------------------------------------
+_omz_register_handler _traista_git_info
+
+# ---------------------------------------------------------------------------
+#  Prompt
+# ---------------------------------------------------------------------------
+PROMPT='%{$fg_bold[blue]%}%~%{$reset_color%}$(_traista_git_prompt)$(_traista_right_time)
+%(?:%{$fg[green]%}:%{$fg[red]%})❯%{$reset_color%} '
+
+RPROMPT=
+
+# ---------------------------------------------------------------------------
+#  Clear oh-my-zsh git variables to prevent interference
+# ---------------------------------------------------------------------------
+ZSH_THEME_GIT_PROMPT_PREFIX=""
+ZSH_THEME_GIT_PROMPT_SUFFIX=""
+ZSH_THEME_GIT_PROMPT_DIRTY=""
+ZSH_THEME_GIT_PROMPT_CLEAN=""
